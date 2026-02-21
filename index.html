@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Linda's Password Book</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+--blue: #1a6fc4;
+--blue-light: #e8f1fb;
+--blue-dark: #135499;
+--green: #1a8c5b;
+--green-light: #e8f5ee;
+--red: #c42b2b;
+--gray: #6b7280;
+--bg: #f5f7fa;
+--text: #1a1a2e;
+--border: #d1d9e6;
+--shadow: 0 4px 20px rgba(0,0,0,0.10);
+--shadow-btn: 0 6px 20px rgba(26,111,196,0.35);
+}
+
+body {
+font-family: 'Nunito', sans-serif;
+background: var(--bg);
+color: var(--text);
+min-height: 100vh;
+display: flex;
+flex-direction: column;
+align-items: center;
+}
+
+.screen { display: none; width: 100%; max-width: 480px; min-height: 100vh; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* PIN / SETUP */
+#pinScreen, #setupScreen {
+background: var(--blue);
+align-items: center;
+justify-content: center;
+gap: 16px;
+padding: 24px 22px 20px;
+}
+
+.pin-logo { font-size: 72px; line-height: 1; }
+.pin-title { color: white; font-size: 28px; font-weight: 900; text-align: center; line-height: 1.2; }
+.pin-subtitle { color: rgba(255,255,255,0.78); font-size: 16px; text-align: center; }
+.pin-dots { display: flex; gap: 16px; justify-content: center; }
+.pin-dot { width: 20px; height: 20px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.5); background: transparent; transition: all 0.18s; }
+.pin-dot.filled { background: white; border-color: white; }
+.pin-error { color: #ffcdd2; font-size: 16px; font-weight: 700; text-align: center; min-height: 24px; }
+.pin-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 290px; }
+.pin-key { background: rgba(255,255,255,0.15); border: none; border-radius: 14px; color: white; font-family: 'Nunito', sans-serif; font-size: 26px; font-weight: 700; padding: 14px 10px; cursor: pointer; transition: all 0.13s; text-align: center; }
+.pin-key:active { background: rgba(255,255,255,0.38); transform: scale(0.93); }
+.pin-key.empty { background: transparent; cursor: default; }
+.pin-key.delete { font-size: 20px; }
+.pin-hint { color: rgba(255,255,255,0.5); font-size: 13px; text-align: center; }
+#resetHint { text-decoration: underline; cursor: pointer; color: rgba(255,255,200,0.7); }
+
+/* MAIN */
+#mainScreen { background: var(--bg); }
+.header { background: var(--blue); padding: 18px 18px 14px; display: flex; align-items: center; gap: 10px; }
+.header-title { color: white; font-size: 22px; font-weight: 900; flex: 1; }
+.header-count { background: rgba(255,255,255,0.2); color: white; font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 20px; flex-shrink: 0; }
+.lock-btn { background: rgba(255,255,255,0.18); border: none; border-radius: 10px; color: white; font-size: 20px; padding: 7px 9px; cursor: pointer; }
+.privacy-bar { background: var(--blue-dark); padding: 5px 16px; text-align: center; }
+.privacy-text { font-size: 11px; color: rgba(255,255,255,0.5); font-style: italic; }
+.search-bar { padding: 12px 16px 10px; background: white; border-bottom: 1px solid var(--border); }
+.search-input { width: 100%; padding: 13px 16px; font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 600; border: 2px solid var(--border); border-radius: 14px; background: var(--bg); color: var(--text); outline: none; }
+.search-input:focus { border-color: var(--blue); }
+.entries-list { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.entry-card { background: white; border-radius: 18px; padding: 16px 18px; box-shadow: var(--shadow); cursor: pointer; border: 2px solid transparent; transition: all 0.13s; display: flex; align-items: center; gap: 14px; }
+.entry-card:active { transform: scale(0.98); border-color: var(--blue); }
+.entry-icon { width: 50px; height: 50px; border-radius: 14px; background: var(--blue-light); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+.entry-info { flex: 1; min-width: 0; }
+.entry-site { font-size: 20px; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entry-user { font-size: 15px; color: var(--gray); font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entry-date { font-size: 12px; color: var(--gray); font-weight: 600; margin-top: 3px; }
+.entry-arrow { color: var(--blue); font-size: 26px; flex-shrink: 0; }
+.empty-state { text-align: center; padding: 50px 24px; color: var(--gray); }
+.empty-state .empty-icon { font-size: 60px; margin-bottom: 14px; }
+.empty-state .empty-text { font-size: 20px; font-weight: 800; margin-bottom: 8px; color: var(--text); }
+.empty-state .empty-sub { font-size: 17px; line-height: 1.5; }
+.bottom-area { padding: 8px 14px 12px; display: flex; flex-direction: column; gap: 10px; }
+.add-btn { background: var(--blue); color: white; border: none; border-radius: 18px; padding: 18px; font-family: 'Nunito', sans-serif; font-size: 21px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: var(--shadow-btn); transition: all 0.13s; }
+.add-btn:active { transform: scale(0.97); background: var(--blue-dark); }
+.backup-strip { display: flex; align-items: center; background: white; border-radius: 14px; padding: 10px 14px; border: 1px solid var(--border); gap: 8px; }
+.backup-status { font-size: 12px; font-weight: 700; color: var(--gray); flex: 1; }
+.backup-status span { color: var(--green); }
+.restore-btn { background: var(--blue-light); border: 1px solid var(--blue); border-radius: 10px; color: var(--blue-dark); font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
+.export-btn { background: transparent; border: none; color: var(--gray); font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; padding: 7px 8px; cursor: pointer; text-decoration: underline; white-space: nowrap; }
+.made-with { text-align: center; font-size: 12px; color: var(--gray); padding: 8px 0 12px; border-top: 1px solid var(--border); }
+
+/* BACK HEADER */
+.back-header { background: var(--blue); padding: 16px 18px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.back-btn { background: rgba(255,255,255,0.18); border: none; border-radius: 10px; color: white; font-size: 17px; font-weight: 700; padding: 9px 14px; cursor: pointer; font-family: 'Nunito', sans-serif; }
+.back-header-title { color: white; font-size: 20px; font-weight: 900; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* DETAIL */
+#detailScreen { background: var(--bg); }
+.detail-body { padding: 14px; display: flex; flex-direction: column; gap: 11px; flex: 1; overflow-y: auto; }
+.detail-card { background: white; border-radius: 18px; padding: 16px 18px; box-shadow: var(--shadow); }
+.detail-label { font-size: 12px; font-weight: 800; color: var(--blue); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+.detail-value { font-size: 21px; font-weight: 700; color: var(--text); word-break: break-all; }
+.detail-value.hidden-pw { letter-spacing: 5px; color: var(--gray); font-size: 23px; }
+.detail-date { font-size: 12px; color: var(--gray); font-style: italic; margin-top: 4px; }
+.field-actions { display: flex; gap: 8px; margin-top: 10px; }
+.copy-btn { background: var(--blue-light); border: 1px solid var(--blue); border-radius: 12px; color: var(--blue-dark); font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 700; padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.13s; white-space: nowrap; }
+.copy-btn:active { background: var(--blue); color: white; }
+.copy-btn.copied { background: var(--green-light); border-color: var(--green); color: var(--green); }
+.reveal-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 700; padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.13s; white-space: nowrap; }
+.reveal-btn:active { background: var(--blue); color: white; }
+.detail-actions { display: flex; gap: 12px; padding: 0 14px 20px; flex-shrink: 0; }
+.btn-edit { flex: 1; background: var(--blue); color: white; border: none; border-radius: 16px; padding: 16px; font-family: 'Nunito', sans-serif; font-size: 19px; font-weight: 800; cursor: pointer; }
+.btn-edit:active { background: var(--blue-dark); }
+.btn-delete { background: #fde8e8; color: var(--red); border: none; border-radius: 16px; padding: 16px 20px; font-family: 'Nunito', sans-serif; font-size: 20px; font-weight: 800; cursor: pointer; }
+.btn-delete:active { background: var(--red); color: white; }
+
+/* EDIT / ADD */
+#editScreen { background: var(--bg); }
+.form-body { padding: 14px; display: flex; flex-direction: column; gap: 14px; flex: 1; overflow-y: auto; }
+.form-group label { display: block; font-size: 15px; font-weight: 800; color: var(--text); margin-bottom: 7px; }
+.form-group input { width: 100%; padding: 15px 16px; font-family: 'Nunito', sans-serif; font-size: 19px; font-weight: 600; border: 2px solid var(--border); border-radius: 14px; background: white; color: var(--text); outline: none; transition: border-color 0.13s; }
+.form-group input:focus { border-color: var(--blue); }
+.pw-row { display: flex; gap: 8px; }
+.pw-row input { flex: 1; }
+.toggle-pw-btn { background: var(--blue-light); border: 2px solid var(--border); border-radius: 14px; color: var(--blue); font-size: 20px; padding: 0 14px; cursor: pointer; flex-shrink: 0; }
+.toggle-pw-btn:active { background: var(--blue); color: white; }
+.pw-vis-hint { font-size: 12px; font-weight: 600; margin-top: 5px; padding-left: 2px; }
+.btn-save { background: var(--blue); color: white; border: none; border-radius: 18px; padding: 18px; font-family: 'Nunito', sans-serif; font-size: 21px; font-weight: 800; cursor: pointer; box-shadow: var(--shadow-btn); transition: all 0.13s; margin-top: 4px; }
+.btn-save:active { background: var(--blue-dark); transform: scale(0.97); }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: flex-end; justify-content: center; }
+.modal-overlay.active { display: flex; }
+.modal { background: white; border-radius: 24px 24px 0 0; padding: 26px 22px 40px; width: 100%; max-width: 480px; text-align: center; }
+.modal-title { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+.modal-text { font-size: 17px; color: var(--gray); margin-bottom: 22px; }
+.modal-btns { display: flex; gap: 12px; }
+.modal-cancel { flex: 1; padding: 16px; background: var(--bg); border: none; border-radius: 14px; font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 700; cursor: pointer; }
+.modal-confirm { flex: 1; padding: 16px; background: var(--red); color: white; border: none; border-radius: 14px; font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 700; cursor: pointer; }
+
+/* TOAST */
+.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--blue-dark); color: white; font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 700; padding: 13px 24px; border-radius: 40px; z-index: 200; transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap; pointer-events: none; max-width: 90vw; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+
+</head>
+<body>
+
+<!-- SETUP -->
+
+<div id="setupScreen" class="screen">
+  <div class="pin-logo">🔐</div>
+  <div class="pin-title">Linda's<br>Password Book</div>
+  <div class="pin-subtitle" id="setupSubtitle">First, create your 4-digit PIN</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="s0"></div><div class="pin-dot" id="s1"></div>
+    <div class="pin-dot" id="s2"></div><div class="pin-dot" id="s3"></div>
+  </div>
+  <div class="pin-error" id="setupError"></div>
+  <div class="pin-keypad" id="setupKeypad"></div>
+  <div class="pin-hint">You'll use this PIN every time you open the app</div>
+</div>
+
+<!-- PIN -->
+
+<div id="pinScreen" class="screen">
+  <div class="pin-logo">🔐</div>
+  <div class="pin-title">Linda's<br>Password Book</div>
+  <div class="pin-subtitle">Enter your PIN to open</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="p0"></div><div class="pin-dot" id="p1"></div>
+    <div class="pin-dot" id="p2"></div><div class="pin-dot" id="p3"></div>
+  </div>
+  <div class="pin-error" id="pinError"></div>
+  <div class="pin-keypad" id="pinKeypad"></div>
+  <div class="pin-hint">Forgot PIN? <span id="resetHint">Reset Everything</span></div>
+</div>
+
+<!-- MAIN -->
+
+<div id="mainScreen" class="screen">
+  <div class="header">
+    <div class="header-title">🔐 Linda's Password Book</div>
+    <div class="header-count" id="entryCount">0</div>
+    <button type="button" class="lock-btn" onclick="lockApp()">🔒</button>
+  </div>
+  <div class="privacy-bar">
+    <span class="privacy-text">🔒 All data is stored privately on this phone ONLY.</span>
+  </div>
+  <div class="search-bar">
+    <input class="search-input" type="search" placeholder="🔍  Search by website name..." id="searchInput" oninput="renderList()">
+  </div>
+  <div class="entries-list" id="entriesList"></div>
+  <div class="bottom-area">
+    <button type="button" class="add-btn" onclick="showAdd()">＋ Add New Password</button>
+    <div class="backup-strip">
+      <div class="backup-status" id="backupStatus">💾 No backup yet</div>
+      <button type="button" class="restore-btn" id="restoreBtn" onclick="showRestoreModal()" style="display:none">↩ Restore</button>
+      <button type="button" class="export-btn" onclick="exportToFile()">⬇ Export</button>
+    </div>
+    <div class="made-with">Made with ♥️ by Todd C. &nbsp;·&nbsp; Version 1.6a</div>
+  </div>
+</div>
+
+<!-- DETAIL -->
+
+<div id="detailScreen" class="screen">
+  <div class="back-header">
+    <button type="button" class="back-btn" onclick="showMain()">◀ Back</button>
+    <div class="back-header-title" id="detailTitle"></div>
+  </div>
+  <div class="detail-body">
+    <div class="detail-card">
+      <div class="detail-label">🌐 Website Name</div>
+      <div class="detail-value" id="detailSite"></div>
+      <div class="detail-date" id="detailDate"></div>
+    </div>
+    <div class="detail-card">
+      <div class="detail-label">👤 Login Name / Email</div>
+      <div class="detail-value" id="detailUser"></div>
+      <div class="field-actions">
+        <button type="button" class="copy-btn" id="copyUserBtn" onclick="copyField('user')">📋 Copy</button>
+      </div>
+    </div>
+    <div class="detail-card">
+      <div class="detail-label">🔑 Password</div>
+      <div class="detail-value hidden-pw" id="detailPass">••••••••</div>
+      <div class="field-actions">
+        <button type="button" class="copy-btn" id="copyPassBtn" onclick="copyField('password')">📋 Copy</button>
+        <button type="button" class="reveal-btn" id="revealBtn" onclick="toggleReveal()">👁 Show</button>
+      </div>
+    </div>
+    <div class="detail-card" id="detailNoteCard" style="display:none">
+      <div class="detail-label">📝 Notes</div>
+      <div class="detail-value" id="detailNote" style="font-size:17px;line-height:1.4"></div>
+    </div>
+  </div>
+  <div class="detail-actions">
+    <button type="button" class="btn-edit" onclick="showEdit()">✏️ Edit</button>
+    <button type="button" class="btn-delete" onclick="confirmDelete()">🗑</button>
+  </div>
+</div>
+
+<!-- EDIT / ADD -->
+
+<div id="editScreen" class="screen">
+  <div class="back-header">
+    <button type="button" class="back-btn" onclick="cancelEdit()">◀ Back</button>
+    <div class="back-header-title" id="editTitle">Add Password</div>
+  </div>
+  <div class="form-body">
+    <div class="form-group">
+      <label for="fSite">🌐 Website Name</label>
+      <input id="fSite" type="text" placeholder="e.g. Facebook, Gmail, Amazon" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label for="fUser">👤 Login Name or Email</label>
+      <input id="fUser" type="text" placeholder="e.g. yourname@email.com" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label for="fPass">🔑 Password</label>
+      <div class="pw-row">
+        <button type="button" class="toggle-pw-btn" id="togglePwBtn" onclick="toggleEditPw()">🙈</button>
+        <input id="fPass" type="text" placeholder="Enter password" autocomplete="new-password">
+      </div>
+      <div class="pw-vis-hint" id="pwVisHint" style="color:var(--green)">✔ Shown so you can check what you're typing</div>
+    </div>
+    <div class="form-group">
+      <label for="fNote">📝 Notes (Optional)</label>
+      <input id="fNote" type="text" placeholder="e.g. Security question answer" autocomplete="off">
+    </div>
+    <button type="button" class="btn-save" onclick="saveEntry()">✅ Save Password</button>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal-title">Delete This Password?</div>
+    <div class="modal-text">This cannot be undone.</div>
+    <div class="modal-btns">
+      <button type="button" class="modal-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+      <button type="button" class="modal-confirm" onclick="deleteEntry()">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESTORE MODAL -->
+
+<div class="modal-overlay" id="restoreModal">
+  <div class="modal">
+    <div class="modal-title">↩ Restore from Backup?</div>
+    <div class="modal-text" id="restoreModalText">Restore your last backup?</div>
+    <div class="modal-btns">
+      <button type="button" class="modal-cancel" onclick="closeModal('restoreModal')">Cancel</button>
+      <button type="button" class="modal-confirm" style="background:var(--green)" onclick="doRestore()">Yes, Restore</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+var SKEY = 'lpb_entries';
+var PKEY = 'lpb_pin';
+var BKEY = 'lpb_backup';
+var BTKEY = 'lpb_backup_time';
+
+var entries = [];
+var currentId = null;
+var pwVisible = false;
+var editPwVis = true;
+var setupPin1 = '';
+var setupConfirm = false;
+var setupBuf = '';
+var pinBuf = '';
+
+function loadData() {
+  try { entries = JSON.parse(localStorage.getItem(SKEY)) || []; } catch(e) { entries = []; }
+}
+function saveData() { localStorage.setItem(SKEY, JSON.stringify(entries)); autoBackup(); }
+function getPin() { return localStorage.getItem(PKEY) || ''; }
+function setPin(p) { localStorage.setItem(PKEY, p); }
+
+function autoBackup() {
+  localStorage.setItem(BKEY, JSON.stringify(entries));
+  localStorage.setItem(BTKEY, new Date().toLocaleString());
+  updateBackupStatus();
+}
+
+function updateBackupStatus() {
+  var t = localStorage.getItem(BTKEY);
+  var s = document.getElementById('backupStatus');
+  var r = document.getElementById('restoreBtn');
+  if (t) { s.innerHTML = '💾 Backed up: <span>' + t + '</span>'; r.style.display = ''; }
+  else { s.innerHTML = '💾 No backup yet'; r.style.display = 'none'; }
+}
+
+function showRestoreModal() {
+  var backup = getBackup();
+  if (!backup) { showToast('No backup found'); return; }
+  var t = localStorage.getItem(BTKEY);
+  document.getElementById('restoreModalText').textContent = 'Restore ' + backup.length + ' password' + (backup.length !== 1 ? 's' : '') + ' from ' + t + '?';
+  document.getElementById('restoreModal').classList.add('active');
+}
+
+function getBackup() {
+  try { return JSON.parse(localStorage.getItem(BKEY)) || null; } catch(e) { return null; }
+}
+
+function doRestore() {
+  var backup = getBackup();
+  if (!backup) { showToast('No backup found'); return; }
+  entries = backup;
+  localStorage.setItem(SKEY, JSON.stringify(entries));
+  closeModal('restoreModal');
+  showMain();
+  showToast('✅ Passwords restored!');
+}
+
+function exportToFile() {
+  if (!entries.length) { showToast('Nothing to export yet'); return; }
+  var text = "LINDA'S PASSWORD BOOK\nExported: " + new Date().toLocaleString() + "\n" + "=".repeat(40) + "\n\n";
+  entries.slice().sort(function(a,b){ return a.site.localeCompare(b.site); }).forEach(function(e) {
+    text += 'Website:   ' + e.site + '\nLogin:     ' + e.user + '\nPassword:  ' + e.password + '\n';
+    if (e.note) text += 'Notes:     ' + e.note + '\n';
+    if (e.dateAdded) text += 'Added:     ' + e.dateAdded + '\n';
+    text += "-".repeat(30) + "\n";
+  });
+  var blob = new Blob([text], {type:'text/plain'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'lindas-passwords-' + new Date().toISOString().slice(0,10) + '.txt'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('📄 Exported!');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+function showScreen(id) {
+  var all = document.querySelectorAll('.screen');
+  for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
+  var el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+function buildKeypad(cid, onDigit, onDel) {
+  var keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  var c = document.getElementById(cid);
+  c.innerHTML = '';
+  keys.forEach(function(k) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pin-key' + (k==='' ? ' empty' : '') + (k==='⌫' ? ' delete' : '');
+    btn.textContent = k;
+    if (k !== '') {
+      (function(key){ btn.onclick = function(){ key === '⌫' ? onDel() : onDigit(key); }; })(k);
+    }
+    c.appendChild(btn);
+  });
+}
+
+function dots(p, val) {
+  for (var i = 0; i < 4; i++) {
+    var d = document.getElementById(p + i);
+    if (d) d.classList.toggle('filled', i < val.length);
+  }
+}
+
+function initSetup() {
+  setupBuf = ''; setupConfirm = false; setupPin1 = '';
+  dots('s','');
+  document.getElementById('setupError').textContent = '';
+  document.getElementById('setupSubtitle').textContent = 'First, create your 4-digit PIN';
+  buildKeypad('setupKeypad', function(d) {
+    if (setupBuf.length >= 4) return;
+    setupBuf += d; dots('s', setupBuf);
+    if (setupBuf.length === 4) {
+      setTimeout(function() {
+        if (!setupConfirm) {
+          setupPin1 = setupBuf; setupBuf = ''; setupConfirm = true;
+          document.getElementById('setupSubtitle').textContent = 'Enter it one more time to confirm';
+          dots('s',''); document.getElementById('setupError').textContent = '';
+        } else {
+          if (setupBuf === setupPin1) { setPin(setupPin1); showMain(); }
+          else {
+            document.getElementById('setupError').textContent = "Those didn't match. Try again.";
+            setupBuf = ''; setupConfirm = false; setupPin1 = '';
+            document.getElementById('setupSubtitle').textContent = 'First, create your 4-digit PIN';
+            dots('s','');
+          }
+        }
+      }, 120);
+    }
+  }, function() { setupBuf = setupBuf.slice(0,-1); dots('s', setupBuf); });
+}
+
+function initPin() {
+  pinBuf = ''; dots('p','');
+  document.getElementById('pinError').textContent = '';
+  buildKeypad('pinKeypad', function(d) {
+    if (pinBuf.length >= 4) return;
+    pinBuf += d; dots('p', pinBuf);
+    if (pinBuf.length === 4) {
+      setTimeout(function() {
+        if (pinBuf === getPin()) { showMain(); }
+        else { document.getElementById('pinError').textContent = 'Wrong PIN. Try again.'; pinBuf = ''; dots('p',''); }
+      }, 120);
+    }
+  }, function() { pinBuf = pinBuf.slice(0,-1); dots('p', pinBuf); });
+}
+
+document.getElementById('resetHint').onclick = function() {
+  if (confirm('This will DELETE all your saved passwords and reset the PIN.\n\nAre you absolutely sure?')) {
+    [SKEY,PKEY,BKEY,BTKEY].forEach(function(k){ localStorage.removeItem(k); });
+    entries = []; initSetup(); showScreen('setupScreen');
+  }
+};
+
+function showMain() {
+  loadData(); renderList(); updateBackupStatus();
+  document.getElementById('searchInput').value = '';
+  showScreen('mainScreen');
+}
+
+function renderList() {
+  var q = document.getElementById('searchInput').value.toLowerCase().trim();
+  var filtered = entries.filter(function(e) {
+    return !q || (e.site||'').toLowerCase().includes(q) || (e.user||'').toLowerCase().includes(q);
+  });
+  filtered.sort(function(a,b){ return (a.site||'').localeCompare(b.site||''); });
+  var list = document.getElementById('entriesList');
+  document.getElementById('entryCount').textContent = entries.length;
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">' + (entries.length ? '🔍' : '📋') + '</div>' +
+      '<div class="empty-text">' + (entries.length ? 'Nothing found' : 'No passwords yet') + '</div>' +
+      '<div class="empty-sub">' + (entries.length ? 'Try a different search word' : 'Tap the button below to add your first one') + '</div></div>';
+    return;
+  }
+
+  var html = '';
+  filtered.forEach(function(e) {
+    html += '<div class="entry-card" data-id="' + e.id + '">' +
+      '<div class="entry-icon">' + siteEmoji(e.site||'') + '</div>' +
+      '<div class="entry-info">' +
+        '<div class="entry-site">' + esc(e.site||'') + '</div>' +
+        '<div class="entry-user">' + esc(e.user||'') + '</div>' +
+        (e.dateAdded ? '<div class="entry-date">Added ' + e.dateAdded + '</div>' : '') +
+      '</div><div class="entry-arrow">›</div></div>';
+  });
+  list.innerHTML = html;
+
+  list.querySelectorAll('.entry-card').forEach(function(card) {
+    card.addEventListener('click', function() { showDetail(this.getAttribute('data-id')); });
+  });
+}
+
+function siteEmoji(site) {
+  var s = site.toLowerCase();
+  if (s.includes('facebook')||s.includes('fb')) return '👥';
+  if (s.includes('gmail')||s.includes('google')) return '📧';
+  if (s.includes('amazon')) return '🛒';
+  if (s.includes('bank')||s.includes('credit')||s.includes('chase')||s.includes('wells')||s.includes('capital one')||s.includes('citibank')||s.includes('fidelity')) return '🏦';
+  if (s.includes('netflix')) return '🎬';
+  if (s.includes('apple')||s.includes('icloud')) return '🍎';
+  if (s.includes('medicare')||s.includes('health')||s.includes('doctor')||s.includes('medical')||s.includes('mychart')) return '🏥';
+  if (s.includes('mail')||s.includes('yahoo')||s.includes('outlook')||s.includes('hotmail')) return '📧';
+  if (s.includes('instagram')) return '📸';
+  if (s.includes('twitter')||s.includes('x.com')) return '🐦';
+  if (s.includes('youtube')) return '▶️';
+  if (s.includes('ebay')) return '🏷️';
+  if (s.includes('pharmacy')||s.includes('cvs')||s.includes('walgreen')) return '💊';
+  if (s.includes('social security')||s.includes('ssa')||s.includes('.gov')) return '🏛️';
+  if (s.includes('mahjong')||s.includes('game')) return '🀄';
+  if (s.includes('church')||s.includes('faith')||s.includes('bible')) return '⛪';
+  return '🌐';
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function lockApp() {
+  pinBuf = ''; dots('p','');
+  document.getElementById('pinError').textContent = '';
+  showScreen('pinScreen');
+}
+
+function showDetail(id) {
+  var e = null;
+  for (var i = 0; i < entries.length; i++) { if (entries[i].id === id) { e = entries[i]; break; } }
+  if (!e) { showMain(); return; }
+  currentId = id; pwVisible = false;
+  document.getElementById('detailTitle').textContent = e.site || '';
+  document.getElementById('detailSite').textContent = e.site || '';
+  document.getElementById('detailDate').textContent = e.dateAdded ? 'Added ' + e.dateAdded : '';
+  document.getElementById('detailUser').textContent = e.user || '';
+  document.getElementById('detailPass').textContent = '••••••••';
+  document.getElementById('detailPass').className = 'detail-value hidden-pw';
+  document.getElementById('revealBtn').textContent = '👁 Show';
+  resetCopyBtn('copyUserBtn'); resetCopyBtn('copyPassBtn');
+  var nc = document.getElementById('detailNoteCard');
+  if (e.note) { nc.style.display = ''; document.getElementById('detailNote').textContent = e.note; }
+  else nc.style.display = 'none';
+  showScreen('detailScreen');
+}
+
+function toggleReveal() {
+  var e = null;
+  for (var i = 0; i < entries.length; i++) { if (entries[i].id === currentId) { e = entries[i]; break; } }
+  if (!e) return;
+  pwVisible = !pwVisible;
+  var el = document.getElementById('detailPass');
+  var btn = document.getElementById('revealBtn');
+  if (pwVisible) { el.textContent = e.password; el.className = 'detail-value'; btn.textContent = '🙈 Hide'; }
+  else { el.textContent = '••••••••'; el.className = 'detail-value hidden-pw'; btn.textContent = '👁 Show'; }
+}
+
+function copyField(field) {
+  var e = null;
+  for (var i = 0; i < entries.length; i++) { if (entries[i].id === currentId) { e = entries[i]; break; } }
+  if (!e) return;
+  var val = field === 'user' ? (e.user||'') : (e.password||'');
+  var btnId = field === 'user' ? 'copyUserBtn' : 'copyPassBtn';
+  var label = field === 'user' ? 'Login name' : 'Password';
+  function onOk() { markCopied(btnId); showToast('📋 ' + label + ' copied! Go paste it now.'); }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(val).then(onOk).catch(function(){ fallbackCopy(val, onOk); });
+  } else { fallbackCopy(val, onOk); }
+}
+
+function fallbackCopy(val, cb) {
+  var ta = document.createElement('textarea');
+  ta.value = val; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { document.execCommand('copy'); cb(); } catch(err) { showToast('Please copy manually'); }
+  document.body.removeChild(ta);
+}
+
+function markCopied(btnId) {
+  var btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.textContent = '✅ Copied!'; btn.className = 'copy-btn copied';
+  setTimeout(function(){ resetCopyBtn(btnId); }, 3000);
+}
+
+function resetCopyBtn(btnId) {
+  var btn = document.getElementById(btnId);
+  if (btn) { btn.textContent = '📋 Copy'; btn.className = 'copy-btn'; }
+}
+
+function showAdd() {
+  currentId = null;
+  document.getElementById('editTitle').textContent = 'Add New Password';
+  document.getElementById('fSite').value = '';
+  document.getElementById('fUser').value = '';
+  document.getElementById('fPass').value = '';
+  document.getElementById('fNote').value = '';
+  document.getElementById('fPass').type = 'text';
+  document.getElementById('togglePwBtn').textContent = '🙈';
+  document.getElementById('pwVisHint').textContent = '✔ Shown so you can check what you\'re typing';
+  document.getElementById('pwVisHint').style.color = 'var(--green)';
+  editPwVis = true;
+  showScreen('editScreen');
+  setTimeout(function(){ document.getElementById('fSite').focus(); }, 300);
+}
+
+function showEdit() {
+  var e = null;
+  for (var i = 0; i < entries.length; i++) { if (entries[i].id === currentId) { e = entries[i]; break; } }
+  if (!e) return;
+  document.getElementById('editTitle').textContent = 'Edit Password';
+  document.getElementById('fSite').value = e.site || '';
+  document.getElementById('fUser').value = e.user || '';
+  document.getElementById('fPass').value = e.password || '';
+  document.getElementById('fNote').value = e.note || '';
+  document.getElementById('fPass').type = 'password';
+  document.getElementById('togglePwBtn').textContent = '👁';
+  document.getElementById('pwVisHint').textContent = 'Tap 👁 to show password';
+  document.getElementById('pwVisHint').style.color = 'var(--gray)';
+  editPwVis = false;
+  showScreen('editScreen');
+}
+
+function cancelEdit() {
+  if (currentId) showDetail(currentId);
+  else showMain();
+}
+
+function toggleEditPw() {
+  editPwVis = !editPwVis;
+  document.getElementById('fPass').type = editPwVis ? 'text' : 'password';
+  document.getElementById('togglePwBtn').textContent = editPwVis ? '🙈' : '👁';
+  document.getElementById('pwVisHint').textContent = editPwVis ? '✔ Shown so you can check what you\'re typing' : 'Tap 👁 to show password';
+  document.getElementById('pwVisHint').style.color = editPwVis ? 'var(--green)' : 'var(--gray)';
+}
+
+function saveEntry() {
+  var site = document.getElementById('fSite').value.trim();
+  var user = document.getElementById('fUser').value.trim();
+  var pass = document.getElementById('fPass').value;
+  var note = document.getElementById('fNote').value.trim();
+  if (!site) { alert('Please enter a website name.'); return; }
+  if (!user) { alert('Please enter a login name or email.'); return; }
+  if (!pass) { alert('Please enter a password.'); return; }
+  if (currentId) {
+    for (var i = 0; i < entries.length; i++) {
+      if (entries[i].id === currentId) {
+        entries[i].site = site; entries[i].user = user;
+        entries[i].password = pass; entries[i].note = note; break;
+      }
+    }
+  } else {
+    var d = new Date();
+    entries.push({ id: String(Date.now()), site:site, user:user, password:pass, note:note,
+      dateAdded: d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) });
+  }
+  saveData();
+  showToast('✅ Saved & backed up!');
+  showMain();
+}
+
+function confirmDelete() { document.getElementById('deleteModal').classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function deleteEntry() {
+  entries = entries.filter(function(x){ return x.id !== currentId; });
+  saveData(); closeModal('deleteModal');
+  showToast('🗑 Deleted'); showMain();
+}
+
+// INIT
+loadData();
+if (!getPin()) { initSetup(); showScreen('setupScreen'); }
+else { initPin(); showScreen('pinScreen'); }
+</script>
+
+</body>
+</html>
