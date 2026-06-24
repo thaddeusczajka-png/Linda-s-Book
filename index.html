@@ -94,6 +94,11 @@ padding: 24px 22px 20px;
 .backup-status span { color: var(--green); }
 .restore-btn { background: var(--blue-light); border: 1px solid var(--blue); border-radius: 10px; color: var(--blue-dark); font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
 .export-btn { background: transparent; border: none; color: var(--gray); font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; padding: 7px 8px; cursor: pointer; text-decoration: underline; white-space: nowrap; }
+.import-btn { background: transparent; border: none; color: var(--blue); font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; padding: 7px 8px; cursor: pointer; text-decoration: underline; white-space: nowrap; }
+.modal-confirm-green { flex: 1; padding: 16px; background: var(--green); color: white; border: none; border-radius: 14px; font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; }
+.modal-confirm-blue { flex: 1; padding: 16px; background: var(--blue); color: white; border: none; border-radius: 14px; font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; }
+.modal-btns-3 { display: flex; gap: 8px; flex-direction: column; }
+.modal-btns-3 .row { display: flex; gap: 8px; }
 .made-with { text-align: center; font-size: 12px; color: var(--gray); padding: 8px 0 12px; border-top: 1px solid var(--border); }
 
 /* BACK HEADER */
@@ -204,8 +209,10 @@ padding: 24px 22px 20px;
       <div class="backup-status" id="backupStatus">💾 No backup yet</div>
       <button type="button" class="restore-btn" id="restoreBtn" onclick="showRestoreModal()" style="display:none">↩ Restore</button>
       <button type="button" class="export-btn" onclick="exportToFile()">⬇ Export</button>
+      <button type="button" class="import-btn" onclick="triggerImport()">⬆ Import</button>
+      <input type="file" id="importFileInput" accept=".txt" style="display:none" onchange="handleImportFile(this)">
     </div>
-    <div class="made-with">Made with ♥️ by Todd C. &nbsp;·&nbsp; Version 1.6a</div>
+    <div class="made-with">Made with ♥️ by Todd C. &nbsp;·&nbsp; Version 1.7</div>
   </div>
 </div>
 
@@ -302,6 +309,24 @@ padding: 24px 22px 20px;
     <div class="modal-btns">
       <button type="button" class="modal-cancel" onclick="closeModal('restoreModal')">Cancel</button>
       <button type="button" class="modal-confirm" style="background:var(--green)" onclick="doRestore()">Yes, Restore</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <div class="modal-title" id="importModalTitle">⬆ Import Passwords</div>
+    <div class="modal-text" id="importModalText"></div>
+    <div class="modal-btns-3">
+      <div class="row">
+        <button type="button" class="modal-confirm-blue" onclick="doImport('merge')">➕ Add to existing</button>
+        <button type="button" class="modal-confirm-green" onclick="doImport('replace')">🔄 Replace all</button>
+      </div>
+      <div class="row">
+        <button type="button" class="modal-cancel" style="flex:1" onclick="closeModal('importModal')">Cancel</button>
+      </div>
     </div>
   </div>
 </div>
@@ -682,6 +707,92 @@ function deleteEntry() {
   entries = entries.filter(function(x){ return x.id !== currentId; });
   saveData(); closeModal('deleteModal');
   showToast('🗑 Deleted'); showMain();
+}
+
+var pendingImport = [];
+
+function triggerImport() {
+  var inp = document.getElementById('importFileInput');
+  inp.value = '';
+  inp.click();
+}
+
+function handleImportFile(input) {
+  if (!input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var text = e.target.result;
+    var parsed = parseExportText(text);
+    if (!parsed.length) {
+      showToast('❌ No passwords found in that file');
+      return;
+    }
+    pendingImport = parsed;
+    var dupes = 0;
+    parsed.forEach(function(imp) {
+      var match = entries.some(function(ex) {
+        return ex.site.toLowerCase() === imp.site.toLowerCase() &&
+               ex.user.toLowerCase() === imp.user.toLowerCase();
+      });
+      if (match) dupes++;
+    });
+    var msg = 'Found ' + parsed.length + ' password' + (parsed.length !== 1 ? 's' : '') + ' in the file.';
+    if (entries.length) {
+      msg += '\n\nYou currently have ' + entries.length + ' password' + (entries.length !== 1 ? 's' : '') + ' on this phone.';
+      if (dupes) msg += ' (' + dupes + ' duplicate' + (dupes !== 1 ? 's' : '') + ' will be skipped on merge.)';
+      msg += '\n\n"Add to existing" keeps what you have and adds new ones.\n"Replace all" erases current data and loads the file.';
+    } else {
+      msg += '\n\nTap "Add to existing" or "Replace all" to load them.';
+    }
+    document.getElementById('importModalText').textContent = msg;
+    document.getElementById('importModal').classList.add('active');
+  };
+  reader.readAsText(input.files[0]);
+}
+
+function parseExportText(text) {
+  var results = [];
+  // Split on the 30-dash separator lines
+  var blocks = text.split(/\n-{10,}\n/);
+  blocks.forEach(function(block) {
+    var site = '', user = '', password = '', note = '', dateAdded = '';
+    var lines = block.split('\n');
+    lines.forEach(function(line) {
+      if (/^Website:\s+/i.test(line))  site     = line.replace(/^Website:\s+/i, '').trim();
+      if (/^Login:\s+/i.test(line))    user     = line.replace(/^Login:\s+/i, '').trim();
+      if (/^Password:\s+/i.test(line)) password = line.replace(/^Password:\s+/i, '').trim();
+      if (/^Notes:\s+/i.test(line))    note     = line.replace(/^Notes:\s+/i, '').trim();
+      if (/^Added:\s+/i.test(line))    dateAdded= line.replace(/^Added:\s+/i, '').trim();
+    });
+    if (site && user && password) {
+      results.push({ id: String(Date.now() + Math.random()), site: site, user: user,
+        password: password, note: note, dateAdded: dateAdded || '' });
+    }
+  });
+  return results;
+}
+
+function doImport(mode) {
+  if (!pendingImport.length) { closeModal('importModal'); return; }
+  var added = 0;
+  if (mode === 'replace') {
+    entries = pendingImport.slice();
+    added = entries.length;
+  } else {
+    // merge — skip exact site+user duplicates
+    pendingImport.forEach(function(imp) {
+      var isDupe = entries.some(function(ex) {
+        return ex.site.toLowerCase() === imp.site.toLowerCase() &&
+               ex.user.toLowerCase() === imp.user.toLowerCase();
+      });
+      if (!isDupe) { entries.push(imp); added++; }
+    });
+  }
+  saveData();
+  closeModal('importModal');
+  pendingImport = [];
+  showMain();
+  showToast('✅ Imported ' + added + ' password' + (added !== 1 ? 's' : '') + '!');
 }
 
 // INIT
