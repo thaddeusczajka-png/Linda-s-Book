@@ -68,6 +68,8 @@ padding: 24px 22px 20px;
 .header-title { color: white; font-size: 22px; font-weight: 900; flex: 1; }
 .header-count { background: rgba(255,255,255,0.2); color: white; font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 20px; flex-shrink: 0; }
 .lock-btn { background: rgba(255,255,255,0.18); border: none; border-radius: 10px; color: white; font-size: 20px; padding: 7px 9px; cursor: pointer; }
+.add-top-btn { background: rgba(255,255,255,0.18); border: none; border-radius: 10px; color: white; font-size: 20px; padding: 7px 11px; cursor: pointer; font-weight: 800; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.add-top-btn:active { background: rgba(255,255,255,0.38); }
 .privacy-bar { background: var(--blue-dark); padding: 5px 16px; text-align: center; }
 .privacy-text { font-size: 11px; color: rgba(255,255,255,0.5); font-style: italic; }
 .search-bar { padding: 12px 16px 10px; background: white; border-bottom: 1px solid var(--border); }
@@ -194,6 +196,7 @@ padding: 24px 22px 20px;
 <div id="mainScreen" class="screen">
   <div class="header">
     <div class="header-title">🔐 FREEDOM</div>
+    <button type="button" class="add-top-btn" onclick="showAdd()">＋</button>
     <div class="header-count" id="entryCount">0</div>
     <button type="button" class="lock-btn" onclick="lockApp()">🔒</button>
   </div>
@@ -213,7 +216,7 @@ padding: 24px 22px 20px;
       <button type="button" class="import-btn" onclick="triggerImport()">⬆ Import</button>
       <input type="file" id="importFileInput" accept=".txt" style="display:none" onchange="handleImportFile(this)">
     </div>
-    <div class="made-with">Made with ♥️ by Todd C. &nbsp;·&nbsp; Version 1.8</div>
+    <div class="made-with">Made with ♥️ by Todd C. &nbsp;·&nbsp; Version 1.9</div>
   </div>
 </div>
 
